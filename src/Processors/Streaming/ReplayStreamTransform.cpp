@@ -31,6 +31,35 @@ ReplayStreamTransform::ReplayStreamTransform(const Block & header, Float32 repla
     sn_index = header.getPositionByName(ProtonConsts::RESERVED_EVENT_SEQUENCE_ID);
 }
 
+void ReplayStreamTransform::cutChunk(Chunk & input_chunk)
+{
+    assert(input_chunk.rows() > 0);
+    size_t index = 0;
+    size_t cur_index = 0;
+    auto & columns = input_chunk.getColumns();
+
+    auto cut_into_chunks = [&](size_t start_pos, size_t end_pos) {
+        Chunk chunk;
+        for (const auto & col : columns)
+            chunk.addColumn(col->cut(start_pos, end_pos - start_pos));
+        output_chunks.push(Chunk());
+        output_chunks.back().swap(chunk);
+    };
+
+    while (index < input_chunk.rows())
+    {
+        if (columns[time_index]->getInt(index) != columns[time_index]->getInt(cur_index))
+        {
+            cut_into_chunks(cur_index, index);
+            cur_index = index;
+        }
+        ++index;
+    }
+
+    cut_into_chunks(cur_index, index);
+    input_chunk.clear();
+}
+
 void ReplayStreamTransform::work()
 {
     if (input_data.exception)
@@ -48,6 +77,8 @@ void ReplayStreamTransform::work()
     /// proton: ends.
     try
     {
+        if (input_data.chunk.rows() && output_chunks.empty())
+            cutChunk(input_data.chunk);
         transform(input_data.chunk, output_data.chunk);
 
         metrics.processing_time_ns += MonotonicNanoseconds::now() - start_ns;
@@ -78,11 +109,6 @@ void ReplayStreamTransform::work()
             output_data.chunk.getChunkContext()); /// proton : propagate chunk context
 }
 
-void ReplayStreamTransform::transform(Chunk & chunk)
-{
-
-}
-
 void ReplayStreamTransform::transform(Chunk & input_chunk, Chunk & output_chunk)
 {
     if (!enable_replay || !input_chunk.rows())
@@ -92,27 +118,18 @@ void ReplayStreamTransform::transform(Chunk & input_chunk, Chunk & output_chunk)
         return;
     }
     
-    // Chunk chunk;
-    UInt64 cur_index = index;
+    output_chunk.swap(output_chunks.front());
+    // output_chunk.swap(output_chunks.front());
+    output_chunks.pop();
 
-    const auto & columns = input_chunk.getColumns();
+    const auto & columns = output_chunk.getColumns();
     auto this_batch_last_sn = columns[sn_index]->getInt(input_chunk.rows() - 1);
 
     /// mark the historical data replay end and begin stream query.
     if (this_batch_last_sn >= last_sn)
         enable_replay = false;
 
-    while (index < input_chunk.rows())
-    {
-        if (columns[time_index]->getInt(index) != columns[time_index]->getInt(cur_index))
-            break;
-        ++index;
-    }
-
-    for (const auto & col : columns)
-        output_chunk.addColumn(col->cut(cur_index, index - cur_index));
-
-    auto this_batch_time = columns[time_index]->getInt(cur_index);
+    auto this_batch_time = columns[time_index]->getInt(0);
     wait_interval_ms
         = static_cast<Int64>(std::lround((last_batch_time.has_value() ? this_batch_time - last_batch_time.value() : 0) / replay_speed));
     last_batch_time = this_batch_time;
@@ -125,13 +142,6 @@ void ReplayStreamTransform::transform(Chunk & input_chunk, Chunk & output_chunk)
         auto sleep_interval_ms = wait_interval_ms > MAX_WAIT_INTERVAL_MS ? MAX_WAIT_INTERVAL_MS : wait_interval_ms;
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
         wait_interval_ms -= sleep_interval_ms;
-    }
-
-    if (index >= input_chunk.rows())
-    {
-        input_chunk.clear();
-        index = 0;
-        has_input = false;
     }
 }
 }

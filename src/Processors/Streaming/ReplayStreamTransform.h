@@ -2,9 +2,9 @@
 #include <Core/Block.h>
 #include <Processors/ISimpleTransform.h>
 #include <base/types.h>
+
 #include <optional>
-
-
+#include <queue>
 namespace DB
 {
 namespace Streaming
@@ -17,8 +17,9 @@ public:
     String getName() const override { return "ReplayStreamTransform"; }
     void work() override;
     void transform(Chunk & input_chunk, Chunk & output_chunk) override;
-    void transform(Chunk & chunk) override;
+    void transform(Chunk & chunk) override {}
 
+    void cutChunk(Chunk & input_chunk);
 private:
 
     Float32 replay_speed = 0;
@@ -30,7 +31,7 @@ private:
     Int64 wait_interval_ms = 0;
     bool enable_replay = true;
     const String replay_time_col;
-    UInt64 index = 0;
+    std::queue<Chunk> output_chunks;
 };
 }
 }
