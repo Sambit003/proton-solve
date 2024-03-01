@@ -77,7 +77,7 @@ void ReplayStreamTransform::work()
     /// proton: ends.
     try
     {
-        if (input_data.chunk.rows() && output_chunks.empty())
+        if (enable_replay && input_data.chunk.rows() && output_chunks.empty())
             cutChunk(input_data.chunk);
         transform(input_data.chunk, output_data.chunk);
 
@@ -111,7 +111,7 @@ void ReplayStreamTransform::work()
 
 void ReplayStreamTransform::transform(Chunk & input_chunk, Chunk & output_chunk)
 {
-    if (!enable_replay || !input_chunk.rows())
+    if (!enable_replay && output_chunks.empty())
     {
         output_chunk.swap(input_chunk);
         has_input = false;
