@@ -14,6 +14,9 @@ endif()
 set(MAX_LINKER_MEMORY 3500)
 include(../cmake/limit_jobs.cmake)
 
+# Make sure the core includes directory exists
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Core/include)
+
 include (../cmake/version.cmake)
 message (STATUS "Will build ${VERSION_FULL} revision ${VERSION_REVISION} ${VERSION_OFFICIAL}")
 include (configure_config.cmake)
