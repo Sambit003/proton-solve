@@ -49,6 +49,18 @@ class ASTStorage;
     M(UInt64, memory_limit, 0, "Configure a limit on the amount of memory that will be allocated by this external stream. Setting this to 0 will disable the limit. By default this is disabled.", 0) \
     M(UInt64, io_threads, 1, "Set the number of IO threads to be used by the Pulsar client. Default is 1 thread.", 0)
 
+#define NATS_EXTERNAL_STREAM_SETTINGS(M) \
+    M(String, nats_url, "", "The NATS server URL", 0) \
+    M(String, nats_subject, "", "The NATS subject to subscribe/publish to", 0) \
+    M(String, nats_queue_group, "", "The NATS queue group for load balancing", 0) \
+    M(String, nats_durable_name, "", "The NATS durable name for at-least-once delivery", 0) \
+    M(UInt64, nats_max_inflight, 1024, "The maximum number of messages that can be in-flight", 0) \
+    M(UInt64, nats_ack_wait, 30000, "The time (in milliseconds) to wait for an ack before resending the message", 0) \
+    M(Bool, nats_auto_ack, true, "If set to true, messages will be automatically acknowledged", 0) \
+    M(String, nats_tls_cert, "", "The TLS certificate for secure connection", 0) \
+    M(String, nats_tls_key, "", "The TLS key for secure connection", 0) \
+    M(String, nats_tls_ca, "", "The TLS CA certificate for secure connection", 0)
+    
 #define TIMEPLUS_EXTERNAL_STREAM_SETTINGS(M, ALIAS) \
     M(String, hosts, "", "A remote server address or an expression that generates multiple addresses of remote servers. Format: host or host:port.", 0) \
     M(String, db, "default", "Database name.", 0) \

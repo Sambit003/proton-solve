@@ -10,6 +10,7 @@
 #include <Storages/ExternalStream/Kafka/Kafka.h>
 #include <Storages/ExternalStream/Pulsar/Pulsar.h>
 #include <Storages/ExternalStream/Timeplus/Timeplus.h>
+#include <Storages/ExternalStream/NATS/NATS.h>
 #ifdef OS_LINUX
 #    include <Storages/ExternalStream/Log/FileLog.h>
 #endif
@@ -95,6 +96,9 @@ StoragePtr createExternalStream(
             storage, std::move(settings), attach, std::move(external_stream_counter), std::move(context_));
 
 #endif
+    if (type == StreamTypes::NATS)
+        return std::make_unique<ExternalStream::NATS>(storage, std::move(settings), engine_args, attach, external_stream_counter, std::move(context_));
+
     throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Unknown external stream type: {}", type);
 }
 
